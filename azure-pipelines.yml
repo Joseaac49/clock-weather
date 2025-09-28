@@ -1,0 +1,50 @@
+trigger:
+- main
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  NODE_VERSION: '20.x'
+  APP_NAME: 'clock-weather-jose'
+  AZURE_SUBSCRIPTION: 'az-conn-appsvc'
+
+steps:
+- task: NodeTool@0
+  inputs:
+    versionSpec: '$(NODE_VERSION)'
+  displayName: 'Use Node $(NODE_VERSION)'
+
+- script: |
+    cd clock-weather-client
+    npm ci
+    npm run build
+  displayName: 'Build client (Vite)'
+
+- script: |
+    cd server
+    npm ci --omit=dev
+  displayName: 'Install server deps (prod)'
+
+- script: |
+    mkdir -p "$(Build.ArtifactStagingDirectory)/app/clock-weather-client"
+    cp -R clock-weather-client/dist "$(Build.ArtifactStagingDirectory)/app/clock-weather-client/dist"
+    cp -R server "$(Build.ArtifactStagingDirectory)/app/server"
+  displayName: 'Stage app files'
+
+- task: ArchiveFiles@2
+  inputs:
+    rootFolderOrFile: '$(Build.ArtifactStagingDirectory)/app'
+    includeRootFolder: false
+    archiveType: 'zip'
+    archiveFile: '$(Build.ArtifactStagingDirectory)/app.zip'
+    replaceExistingArchive: true
+  displayName: 'Archive app.zip'
+
+- task: AzureWebApp@1
+  displayName: 'Deploy to Azure App Service'
+  inputs:
+    azureSubscription: '$(AZURE_SUBSCRIPTION)'
+    appType: 'webAppLinux'
+    appName: '$(APP_NAME)'
+    package: '$(Build.ArtifactStagingDirectory)/app.zip'
