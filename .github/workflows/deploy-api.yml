@@ -1,0 +1,41 @@
+name: Deploy API (server/) to Azure Web App
+
+on:
+  push:
+    branches: [ main ]
+    # Solo se ejecuta si cambias algo en server/ o en este workflow
+    paths:
+      - 'server/**'
+      - '.github/workflows/deploy-api.yml'
+  workflow_dispatch: {}   # también permite ejecutarlo manualmente desde Actions
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    concurrency:
+      group: deploy-clock-weather   # evita superponer despliegues
+      cancel-in-progress: true
+
+    steps:
+      - name: Checkout
+      # Trae el repo
+        uses: actions/checkout@v4
+
+      - name: Use Node 20
+      # Herramientas de Node para pasos de build (si los hubiera)
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install server deps (prod)
+      # Instalamos dependencias dentro de server/ para que el zip ya lleve node_modules
+        working-directory: server
+        run: npm ci --omit=dev
+
+      - name: Deploy to Azure Web App
+      # Publica SOLO el subfolder server/ en tu App Service
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: clock-weather-jose                    # <-- nombre exacto del App Service
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+          package: ./server                                # <-- carpeta a desplegar (raíz tendrá package.json)
