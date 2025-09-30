@@ -50,16 +50,19 @@ export default function App(){
       <h1 className="title">Clock Weather</h1>
 
       <div className="actions">
-        <CityAutocomplete
-          value={city}
-          onChange={setCity}
-          onPick={({lat, lon}) => byCoords(lat, lon)}  // pick inmediato
-          placeholder="Ciudad…"
-        />
-        <button onClick={byCity}>Buscar</button>
-        <button className="secondary" onClick={byGeo}>Usar mi ubicación</button>
-      </div>
+  {/* Si tenés CityAutocomplete */}
+  {/* <CityAutocomplete value={city} onChange={setCity} onPick={({ lat, lon }) => fetchWeatherByCoords(lat, lon)} /> */}
 
+  {/* Si usás input normal, dejá esto: */}
+  <input
+    value={city}
+    onChange={e => setCity(e.target.value)}
+    placeholder="Ciudad…"
+    onKeyDown={e => e.key === 'Enter' && searchByCityManual()}
+  />
+  <button className="btn btn-primary" onClick={searchByCityManual}>Buscar</button>
+  <button className="btn btn-ghost" onClick={searchByGeo}>Usar mi ubicación</button>
+</div>
       {loading && <p className="muted">Cargando…</p>}
       {error && <p className="error">{error}</p>}
       <WeatherCard data={data}/>
