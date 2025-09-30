@@ -1,5 +1,15 @@
 import { useState } from 'react';
-import { getWeatherByCity, getWeatherByCoords } from './services/weatherApi';
+import Clock from './components/Clock';
+import WeatherCard from './components/WeatherCard';
+import './App.css';
+
+const API_BASE = import.meta.env.VITE_API_BASE;
+
+async function fetchJSON(url) {
+  const r = await fetch(url);
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  return r.json();
+}
 
 export default function App() {
   const [city, setCity] = useState('');
@@ -8,12 +18,18 @@ export default function App() {
   const [error, setError] = useState('');
 
   async function searchByCity() {
+    if (!city.trim()) return;
     setLoading(true); setError(''); setData(null);
     try {
-      const d = await getWeatherByCity(city);
+      const url = new URL('/api/weather', API_BASE);
+      url.searchParams.set('city', city.trim());
+      const d = await fetchJSON(url);
       setData(d);
-    } catch (e) { setError(e.message); }
-    finally { setLoading(false); }
+    } catch (e) {
+      setError(e.message || 'No se pudo obtener el clima.');
+    } finally {
+      setLoading(false);
+    }
   }
 
   function searchByGeo() {
@@ -22,38 +38,39 @@ export default function App() {
     navigator.geolocation.getCurrentPosition(async ({ coords }) => {
       setLoading(true);
       try {
-        const d = await getWeatherByCoords(coords.latitude, coords.longitude);
+        const url = new URL('/api/weather', API_BASE);
+        url.searchParams.set('lat', coords.latitude);
+        url.searchParams.set('lon', coords.longitude);
+        const d = await fetchJSON(url);
         setData(d);
-      } catch (e) { setError(e.message); }
-      finally { setLoading(false); }
-    }, () => setError('No se pudo obtener tu ubicación'));
+      } catch (e) {
+        setError(e.message || 'No se pudo obtener el clima por ubicación.');
+      } finally {
+        setLoading(false);
+      }
+    }, () => setError('Permiso de ubicación denegado'));
   }
 
   return (
-    <div style={{ maxWidth: 480, margin: '2rem auto', fontFamily: 'system-ui' }}>
-      <h1>Clock Weather</h1>
-      <div style={{ display: 'flex', gap: 8 }}>
+    <div className="page">
+      <Clock />
+
+      <h1 className="title">Clock Weather</h1>
+
+      <div className="actions">
         <input
           value={city}
           onChange={e => setCity(e.target.value)}
           placeholder="Ciudad…"
-          style={{ flex: 1, padding: 8 }}
+          onKeyDown={e => e.key === 'Enter' && searchByCity()}
         />
         <button onClick={searchByCity}>Buscar</button>
-        <button onClick={searchByGeo}>Usar mi ubicación</button>
+        <button className="secondary" onClick={searchByGeo}>Usar mi ubicación</button>
       </div>
 
-      {loading && <p>Cargando…</p>}
-      {error && <p style={{ color: 'crimson' }}>{error}</p>}
-      {data && (
-        <div style={{ marginTop: 16, padding: 12, border: '1px solid #ddd', borderRadius: 8 }}>
-          <p><b>Timezone:</b> {data.timezone}</p>
-          <p><b>Temp:</b> {data.temperature} °C</p>
-          <p><b>Viento:</b> {data.wind} km/h</p>
-          <p><b>Código clima:</b> {data.weatherCode}</p>
-          <small>lat:{data.lat} lon:{data.lon}</small>
-        </div>
-      )}
+      {loading && <p className="muted">Cargando…</p>}
+      {error && <p className="error">{error}</p>}
+      <WeatherCard data={data} />
     </div>
   );
 }

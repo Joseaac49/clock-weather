@@ -1,33 +1,25 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState } from 'react';
 
-export default function Clock({ timezone }) {
+export default function Clock() {
   const [now, setNow] = useState(new Date());
+
   useEffect(() => {
     const id = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(id);
   }, []);
-  const tz = timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
 
-  const time = new Intl.DateTimeFormat("es-AR", {
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-    hour12: false,
-    timeZone: tz
+  const fecha = new Intl.DateTimeFormat('es-AR', {
+    dateStyle: 'full'
   }).format(now);
 
-  const date = new Intl.DateTimeFormat("es-AR", {
-    weekday: "long",
-    day: "2-digit",
-    month: "long",
-    year: "numeric",
-    timeZone: tz
+  const hora = new Intl.DateTimeFormat('es-AR', {
+    timeStyle: 'medium'
   }).format(now);
 
   return (
     <div className="clock">
-      <div className="time">{time}</div>
-      <div className="date">{date}</div>
+      <div className="clock-time">{hora}</div>
+      <div className="clock-date">{fecha}</div>
     </div>
   );
 }
