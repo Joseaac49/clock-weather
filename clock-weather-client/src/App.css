@@ -1,65 +1,92 @@
-/* --- LAYOUT CENTRADO EN PANTALLA --- */
+:root{
+  --bg1:#0b1220; --bg2:#071019; --fg:#e9f0ff; --muted:#9fb2d1;
+  --primary:#3b82f6; --primary-600:#2563eb;
+  --card:rgba(255,255,255,.06); --border:rgba(255,255,255,.12);
+}
+
+html,body,#root{height:100%}
+body{
+  margin:0; color:var(--fg);
+  background:radial-gradient(1200px 600px at 50% -200px,var(--bg1),var(--bg2));
+  font-family:system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial;
+}
+
+/* ---- layout centrado ---- */
 .page{
-  min-height: 100svh;              /* alto completo, respeta barras en móvil */
-  display: flex;
-  flex-direction: column;
-  align-items: center;             /* centra horizontal */
-  justify-content: center;         /* centra vertical */
-  gap: 1rem;
-  max-width: 760px;
-  margin: 0 auto;
-  padding: 2rem 1rem;
-  text-align: center;
+  min-height:100svh;
+  display:flex; flex-direction:column;
+  align-items:center; justify-content:center;
+  gap:1rem; max-width:760px; margin:0 auto;
+  padding:2rem 1rem; text-align:center;
 }
 
-/* grupo de búsqueda */
+/* título + reloj */
+.title{ margin:.5rem 0 1rem; font-size:clamp(28px,4vw,40px); letter-spacing:.5px }
+.clock-time{ font-size:clamp(24px,3.2vw,34px); font-weight:700 }
+.clock-date{ color:var(--muted); margin-top:2px }
+
+/* ---- barra de búsqueda ---- */
 .actions{
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: .75rem;
-  margin: .75rem 0 1.25rem;
+  display:flex; align-items:center; justify-content:center;
+  gap:.75rem; margin:.75rem 0 1.25rem;
 }
 
-/* --- BOTONES “BONITOS” REUTILIZABLES --- */
+/* botones bonitos */
 .btn{
-  padding: .70rem 1rem;
-  border-radius: .8rem;
-  border: 1px solid var(--border);
-  cursor: pointer;
-  transition: all .15s ease;
-  box-shadow: 0 6px 18px rgba(0,0,0,.18);
+  padding:.70rem 1rem; border-radius:.8rem; border:1px solid var(--border);
+  cursor:pointer; transition:all .15s ease; box-shadow:0 6px 18px rgba(0,0,0,.18);
 }
-
 .btn-primary{
-  background: linear-gradient(180deg, var(--primary), var(--primary-600));
-  color: #fff;
-  border-color: rgba(59,130,246,.6);
+  background:linear-gradient(180deg,var(--primary),var(--primary-600));
+  color:#fff; border-color:rgba(59,130,246,.6);
 }
-.btn-primary:hover{ transform: translateY(-1px); box-shadow: 0 10px 26px rgba(59,130,246,.35); }
+.btn-primary:hover{ transform:translateY(-1px); box-shadow:0 10px 26px rgba(59,130,246,.35) }
+.btn-ghost{ background:rgba(255,255,255,.06); color:var(--fg); border-color:rgba(59,130,246,.6) }
+.btn-ghost:hover{ background:rgba(255,255,255,.10) }
 
-.btn-ghost{
-  background: rgba(255,255,255,.06);
-  color: var(--fg);
-  border-color: rgba(59,130,246,.6);
-}
-.btn-ghost:hover{ background: rgba(255,255,255,.10); }
-
-/* input del buscador */
+/* input */
 .actions input{
-  width: min(520px, 70vw);
-  padding: .70rem .9rem;
-  border-radius: .8rem;
-  border: 1px solid var(--border);
-  background: var(--card);
-  color: var(--fg);
-  outline: none;
+  width:min(520px,70vw);
+  padding:.70rem .9rem;
+  border-radius:.8rem;
+  border:1px solid var(--border);
+  background:var(--card);
+  color:var(--fg);
+  outline:none;
 }
 
-/* Responsivo: en móvil apilamos */
-@media (max-width: 560px){
-  .actions{ flex-direction: column; align-items: stretch; }
-  .actions .btn, .autocomplete{ width: 100%; }
-  .card{ width: 95vw; }
+/* ---- tarjeta de clima ---- */
+.card{
+  margin:0 auto; width:min(600px,90vw); text-align:left;
+  background:var(--card); border:1px solid var(--border);
+  border-radius:16px; padding:1rem; box-shadow:0 10px 30px rgba(0,0,0,.25);
 }
+.card-header{ display:flex; align-items:center; gap:.75rem; margin-bottom:.5rem }
+.card-emoji{ font-size:32px }
+.card-title{ font-weight:700; font-size:18px }
+.card-sub{ color:var(--muted); font-size:14px }
+.grid{ display:grid; grid-template-columns:1fr 1fr; gap:.5rem 1rem; margin:.75rem 0 .5rem }
+.muted{ color:var(--muted) }
+.error{ color:#ffb4b4; margin-top:.5rem }
 
+/* ---- Autocomplete ---- */
+.autocomplete{ position:relative; width:min(520px,70vw) }
+.autocomplete input{ width:100% } /* ya hereda estilos del input de .actions */
+
+.autocomplete-list{
+  position:absolute; left:0; right:0; top:calc(100% + 6px);
+  background:#0e1626; border:1px solid var(--border);
+  border-radius:.6rem; overflow:auto; max-height:260px;
+  box-shadow:0 10px 25px rgba(0,0,0,.35); z-index:20;
+}
+.autocomplete-item{ padding:.55rem .75rem; cursor:pointer }
+.autocomplete-item:hover,
+.autocomplete-item.active{ background:rgba(59,130,246,.20) }
+
+/* ---- responsive ---- */
+@media (max-width:560px){
+  .actions{ flex-direction:column; align-items:stretch }
+  .autocomplete, .actions .btn{ width:100% }
+  .card{ width:95vw }
+  .clock-time{ font-size:clamp(22px,7vw,34px) }
+}
