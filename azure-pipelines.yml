@@ -3,68 +3,64 @@ trigger:
 - main
 
 # --- POOL ---
-# Para self-hosted (tu PC)
 pool:
-  name: 'Default'
-# Si usás agente hospedado de Microsoft, cambiá por:
-# pool:
-#   vmImage: 'windows-latest'
+  vmImage: 'ubuntu-latest'   # agente hospedado de MS
 
 # --- VARIABLES ---
 variables:
   NODE_VERSION: '20.x'
-  APP_NAME: 'clock-weather-jose'          # <- nombre exacto de tu App Service
-  AZURE_SUBSCRIPTION: 'az-conn-appsvc'    # <- nombre de tu Service Connection
-  STAGING: '$(Build.ArtifactStagingDirectory)\app'
+  APP_NAME: 'clock-weather-jose'       # <- nombre exacto del App Service
+  AZURE_SUBSCRIPTION: 'az-conn-appsvc' # <- tu Service Connection
+  STAGING: '$(Build.ArtifactStagingDirectory)/app'   # <-- barras / (Linux)
 
 steps:
-# 1) Instalar Node en el agente
+# 1) Node en el agente
 - task: NodeTool@0
   inputs:
     versionSpec: '$(NODE_VERSION)'
   displayName: 'Use Node $(NODE_VERSION)'
 
-# 2) Build del FRONT (Vite/React)
+# (Opcional) Build del FRONT (no se deploya)
 - script: |
     npm ci
     npm run build
   workingDirectory: 'clock-weather-client'
-  displayName: 'Build client (Vite)'
+  displayName: 'Build client (Vite) [opcional]'
 
-# 3) Instalar dependencias del SERVER (solo prod)
+# 2) Instalar dependencias del SERVER (prod)
 - script: |
     npm ci --omit=dev
   workingDirectory: 'server'
   displayName: 'Install server deps (prod)'
 
-# 4) Preparar carpetas para el ZIP (PowerShell – compatible con Windows)
-- task: PowerShell@2
-  displayName: 'Stage app files'
+# 3) Stage SOLO el contenido de server/ en la RAÍZ del ZIP
+- task: Bash@3
+  displayName: 'Stage server/ at ZIP root'
   inputs:
     targetType: 'inline'
     script: |
-      $st = "$(STAGING)"
-      New-Item -ItemType Directory -Force -Path "$st\clock-weather-client\dist" | Out-Null
-      Copy-Item -Recurse -Force "clock-weather-client\dist\*" "$st\clock-weather-client\dist\"
-      Copy-Item -Recurse -Force "server" "$st\server"
-      Write-Host "Contenido staged en: $st"
-      Get-ChildItem -Recurse $st
+      st="$(Build.ArtifactStagingDirectory)/app"
+      mkdir -p "$st"
+      cp -R server/* "$st"/
+      echo "Contenido staged en: $st"
+      # Debe listar .../app/package.json (no .../app/server/package.json)
+      find "$st" -maxdepth 2 -type f -print
 
-# 5) Crear el .zip para desplegar
+# 4) Crear el ZIP (la raíz debe contener package.json e index.js)
 - task: ArchiveFiles@2
   displayName: 'Archive app.zip'
   inputs:
-    rootFolderOrFile: '$(STAGING)'
+    rootFolderOrFile: '$(STAGING)'                          # <-- ahora coincide
     includeRootFolder: false
     archiveType: 'zip'
-    archiveFile: '$(Build.ArtifactStagingDirectory)\app.zip'
+    archiveFile: '$(Build.ArtifactStagingDirectory)/app.zip' # <-- barras /
     replaceExistingArchive: true
 
-# 6) Deploy al Azure App Service (Linux)
+# 5) Deploy al Azure App Service (Linux)
 - task: AzureWebApp@1
   displayName: 'Deploy to Azure App Service'
   inputs:
     azureSubscription: '$(AZURE_SUBSCRIPTION)'
     appType: 'webAppLinux'
     appName: '$(APP_NAME)'
-    package: '$(Build.ArtifactStagingDirectory)\app.zip'
+    package: '$(Build.ArtifactStagingDirectory)/app.zip'     # <-- barras /

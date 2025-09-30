@@ -1,21 +1,27 @@
 const express = require("express");
 const cors = require("cors");
-const path = require("path");
-// Si tu Node es < 18, descomentá estas dos líneas:
-// const { fetch } = require("undici");
 
 const app = express();
+const PORT = process.env.PORT || 3000;
 
-// En desarrollo podés dejar CORS abierto.
-// Si servís el front desde este mismo server, podrías quitarlo.
-app.use(cors());
+// CORS por allowlist (GitHub Pages + localhost)
+app.use(cors({
+  origin: (origin, cb) => {
+    const allowed = (process.env.ALLOWED_ORIGIN || "http://localhost:5173,https://joseaac49.github.io")
+      .split(",")
+      .map(s => s.trim())
+      .filter(Boolean);
+    if (!origin || allowed.includes("*") || allowed.includes(origin)) return cb(null, true);
+    return cb(new Error("CORS: origin no permitido"));
+  }
+}));
 app.use(express.json());
 
 /* ================================
    RUTAS API
 ================================ */
 
-// Ping
+// Health
 app.get("/api/health", (_req, res) => {
   res.json({ ok: true, service: "clock-weather-backend" });
 });
@@ -29,20 +35,41 @@ app.get("/api/time", (_req, res) => {
   });
 });
 
-// Clima (Open-Meteo, sin API key)
+// Clima:
+// - Si viene ?lat=&lon= usa esas coords.
+// - Si viene ?city= geocodifica con Open-Meteo y luego consulta el clima.
+// (sin API key)
 app.get("/api/weather", async (req, res) => {
   try {
-    const lat = parseFloat(req.query.lat);
-    const lon = parseFloat(req.query.lon);
-    if (Number.isNaN(lat) || Number.isNaN(lon)) {
-      return res.status(400).json({ error: "Parámetros inválidos: usar ?lat=&lon=" });
+    let { lat, lon, city } = req.query;
+
+    if ((lat === undefined || lon === undefined) && city) {
+      // Geocoding por ciudad (sin key)
+      const gUrl = new URL("https://geocoding-api.open-meteo.com/v1/search");
+      gUrl.searchParams.set("name", String(city));
+      gUrl.searchParams.set("count", "1");
+      gUrl.searchParams.set("language", "es");
+      const gRes = await fetch(gUrl);
+      if (!gRes.ok) throw new Error(`Geocoding ${gRes.status}`);
+      const g = await gRes.json();
+      if (!g.results?.length) return res.status(404).json({ error: "Ciudad no encontrada" });
+      lat = g.results[0].latitude;
+      lon = g.results[0].longitude;
     }
 
-    const url =
-      `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}` +
-      `&current=temperature_2m,weather_code,wind_speed_10m&timezone=auto`;
+    const latNum = parseFloat(lat);
+    const lonNum = parseFloat(lon);
+    if (Number.isNaN(latNum) || Number.isNaN(lonNum)) {
+      return res.status(400).json({ error: "Parámetros inválidos: usar ?city= o ?lat=&lon=" });
+    }
 
-    const r = await fetch(url);
+    const wUrl = new URL("https://api.open-meteo.com/v1/forecast");
+    wUrl.searchParams.set("latitude", latNum);
+    wUrl.searchParams.set("longitude", lonNum);
+    wUrl.searchParams.set("current", "temperature_2m,weather_code,wind_speed_10m");
+    wUrl.searchParams.set("timezone", "auto");
+
+    const r = await fetch(wUrl);
     if (!r.ok) throw new Error(`Open-Meteo ${r.status}`);
     const data = await r.json();
 
@@ -51,6 +78,8 @@ app.get("/api/weather", async (req, res) => {
       temperature: data?.current?.temperature_2m,
       wind: data?.current?.wind_speed_10m,
       weatherCode: data?.current?.weather_code,
+      lat: latNum,
+      lon: lonNum,
     });
   } catch (e) {
     console.error(e);
@@ -58,25 +87,12 @@ app.get("/api/weather", async (req, res) => {
   }
 });
 
-/* ================================
-   SERVIR FRONTEND (Vite build)
-   - Requiere haber corrido: npm run build en clock-weather-client
-================================ */
-const clientDist = path.join(__dirname, "..", "clock-weather-client", "dist");
-
-// Archivos estáticos del frontend
-app.use(express.static(clientDist));
-
-// Fallback SPA: cualquier ruta que no sea /api sirve index.html
-app.get(/^\/(?!api).*/, (_req, res) => {
-  res.sendFile(path.join(clientDist, "index.html"));
-});
+// Health simple para Azure
+app.get("/", (_req, res) => res.send("OK"));
 
 /* ================================
    START
 ================================ */
-const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
-  console.log(`API + Front escuchando en http://localhost:${PORT}`);
+  console.log(`API escuchando en :${PORT}`);
 });
-
